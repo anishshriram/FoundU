@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Environment variables — never commit real values
+.env
+.env.local
+.env.staging
+.env.production
+
+# Build output
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# React Native
+mobile/.expo/
+mobile/ios/Pods/
+mobile/android/
+mobile/.gradle/
+
+# Prisma
+prisma/*.db
