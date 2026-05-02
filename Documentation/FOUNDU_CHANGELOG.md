@@ -21,6 +21,26 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.7.0] — 2026-05-01 — Milestone 4 Complete
+
+### added
+- `matching_service/db.py` — psycopg2 DB utilities: `fetch_user`, `fetch_all_active_users_with_embeddings`, `write_embedding`, `upsert_match_pool`, `fetch_match_pool`; uses pgvector Python adapter
+- `matching_service/spotify.py` — Spotify Client Credentials flow; fetches genre, energy, valence, tempo metadata for declared artists; graceful None fallback when credentials absent or API unavailable
+- `matching_service/embedding.py` — profile → weighted text → `all-MiniLM-L6-v2` (384-dim) embedding; field weight tiers per Section 11; Spotify enrichment applied when available; vector written to `users.embedding_vector` via psycopg2
+- `matching_service/similarity.py` — FAISS `IndexFlatIP` on L2-normalized vectors (= cosine similarity); mutual gender preference and mutual age range hard filters; match pool persisted to `match_pools` table; threshold 0.65 (placeholder, TODO: TBD)
+- `matching_service/main.py` — `POST /reindex` (generate embedding + rebuild pool, fire-and-forget from Node backend); `GET /match-pool/{user_id}` (read pre-computed pool for proximity service); sentence-transformers model warmed up at startup
+- `matching_service/models.py` — added `MatchCandidate`, `MatchPoolResponse`
+- `backend/prisma/schema.prisma` — added `MatchPool` model (user_id unique, candidates JSONB, cascade delete)
+- `backend/prisma/migrations/20260502025024_add_match_pools_and_hnsw_index/migration.sql` — creates `match_pools` table; adds HNSW index on `users.embedding_vector` (ADR-007 resolved)
+- `matching_service/requirements.txt` — added `pgvector==0.3.6`
+
+### decision
+- ADR-007 resolved: HNSW index added via `CREATE INDEX ON users USING hnsw (embedding_vector vector_cosine_ops)` in Milestone 4 migration as planned.
+- ADR-012: Match pools stored in PostgreSQL `match_pools` table (JSONB) rather than Redis or in-memory. Avoids Redis dependency (PD-4 still open). Proximity service reads via `GET /match-pool/{user_id}`.
+- ADR-013: `all-MiniLM-L6-v2` confirmed as embedding model (384 dimensions). Matches schema placeholder — no migration needed. Dimension locked for Milestone 4+.
+
+---
+
 ## [0.6.0] — 2026-05-01 — Milestone 3 Complete
 
 ### added
@@ -179,6 +199,8 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-009 | Onboarding fields nullable in `users` table | 2026-05-01 | Registration collects only name/email/phone/password; remaining profile fields set during post-registration onboarding via `PATCH /users/{id}` |
 | ADR-010 | Hard delete for account deletion | 2026-05-01 | FK cascades handle all related rows; immediate deletion satisfies NFR-5.4 (30-day completion requirement) |
 | ADR-011 | `home_base_updated_at` column tracks home base cooldown | 2026-05-01 | Needed to enforce the 30-day update limit (A-3.5 placeholder); set on every successful home base write |
+| ADR-012 | Match pools stored in PostgreSQL `match_pools` (JSONB) | 2026-05-01 | Avoids Redis dependency (PD-4 open); proximity service reads via GET /match-pool/{user_id} |
+| ADR-013 | `all-MiniLM-L6-v2` confirmed as embedding model (384-dim) | 2026-05-01 | Matches schema placeholder; dimension locked, no migration needed |
 
 ---
 
@@ -186,6 +208,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.7.0 | 2026-05-01 | Milestone 4 complete — matching microservice, embeddings, FAISS similarity, match pools, HNSW index |
 | 0.6.0 | 2026-05-01 | Milestone 3 complete — profile PATCH/DELETE/export, home base cooldown, matching reindex fire-and-forget |
 | 0.5.0 | 2026-05-01 | Milestone 2 complete — register, login, logout, JWT middleware, nullable onboarding fields migration |
 | 0.4.0 | 2026-05-01 | Milestone 1 complete — full Prisma schema, migration applied, 10 prompts seeded |

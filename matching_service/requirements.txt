@@ -12,3 +12,6 @@ httpx==0.28.0
 
 # PostgreSQL driver for direct DB writes from matching service — Milestone 4
 psycopg2-binary==2.9.10
+
+# pgvector Python adapter — Milestone 4
+pgvector==0.3.6

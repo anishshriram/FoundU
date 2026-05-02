@@ -122,15 +122,16 @@ model User {
   created_at           DateTime        @default(now())
   last_active_at       DateTime?
 
-  signals_sent      Signal[] @relation("SignalSender")
-  signals_received  Signal[] @relation("SignalReceiver")
-  intros_initiated  Intro[]  @relation("IntroInitiator")
-  reports_filed     Report[] @relation("ReportReporter")
-  reports_received  Report[] @relation("ReportReported")
-  blocks_created    Block[]  @relation("BlockBlocker")
-  blocks_received   Block[]  @relation("BlockBlocked")
-  bevents           BEvent[] @relation("BEventUser")
-  bevents_triggered BEvent[] @relation("BEventTriggeredBy")
+  signals_sent      Signal[]    @relation("SignalSender")
+  signals_received  Signal[]    @relation("SignalReceiver")
+  intros_initiated  Intro[]     @relation("IntroInitiator")
+  reports_filed     Report[]    @relation("ReportReporter")
+  reports_received  Report[]    @relation("ReportReported")
+  blocks_created    Block[]     @relation("BlockBlocker")
+  blocks_received   Block[]     @relation("BlockBlocked")
+  bevents           BEvent[]    @relation("BEventUser")
+  bevents_triggered BEvent[]    @relation("BEventTriggeredBy")
+  match_pool        MatchPool?
 
   @@index([gender_preference], name: "idx_users_gender_preference")
   @@index([age_range_min, age_range_max], name: "idx_users_age_range")
@@ -225,6 +226,17 @@ model Block {
 
   @@unique([blocker_id, blocked_id])
   @@map("blocks")
+}
+
+model MatchPool {
+  id          Int      @id @default(autoincrement())
+  user_id     Int      @unique
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // Array of { user_id: number, score: number } sorted by score descending
+  candidates  Json
+  computed_at DateTime @default(now())
+
+  @@map("match_pools")
 }
 
 model BEvent {
