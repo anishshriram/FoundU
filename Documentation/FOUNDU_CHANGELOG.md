@@ -21,6 +21,26 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.8.0] — 2026-05-02 — Milestone 5 Complete
+
+### added
+- `backend/websocket.ts` — WebSocket connection manager: JWT auth via first-message `{ type: "auth", token }` handshake; in-memory `Map<userId, WebSocket>`; ping/pong keepalive; `send(userId, message)` helper used by proximity and signal services
+- `backend/services/proximityService.ts` — full proximity state machine:
+  - `goOpen`: sets `is_open: true`, stores coords in-memory only (never DB), filters match pool by proximity (Haversine ≤0.25mi), `is_open`, `active`, no-block; pushes `match_card_appear` to both users; high-density auto-refresh if ≥10 open users nearby
+  - `goOff`: sets `is_open: false`, clears coords, cancels all timers, pushes `match_card_expire` to affected users
+  - `getActiveCards`: returns current cards (name, age, photo_url only — no location)
+  - Cards expire after 45 minutes via `setTimeout`; `match_card_expire` fired to both sides on expiry
+- `backend/routes/proximity.ts` — `POST /proximity/open`, `DELETE /proximity/open`, `GET /proximity/matches` — all protected by `authenticate`
+- `backend/app.ts` — registered `@fastify/websocket` plugin; `GET /ws` WebSocket endpoint via `registerWebSocket`
+
+### changed
+- `backend/package.json` — added `@types/ws` dev dependency (required for strict TypeScript on WebSocket message handler)
+
+### decision
+- ADR-014: WebSocket connection state and open-user GPS coordinates stored in-memory on the Node process (single-server MVP). Redis pub/sub needed for multi-instance scaling but deferred until PD-4 is resolved.
+
+---
+
 ## [0.7.0] — 2026-05-01 — Milestone 4 Complete
 
 ### added
@@ -201,6 +221,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-011 | `home_base_updated_at` column tracks home base cooldown | 2026-05-01 | Needed to enforce the 30-day update limit (A-3.5 placeholder); set on every successful home base write |
 | ADR-012 | Match pools stored in PostgreSQL `match_pools` (JSONB) | 2026-05-01 | Avoids Redis dependency (PD-4 open); proximity service reads via GET /match-pool/{user_id} |
 | ADR-013 | `all-MiniLM-L6-v2` confirmed as embedding model (384-dim) | 2026-05-01 | Matches schema placeholder; dimension locked, no migration needed |
+| ADR-014 | WS connections and GPS coords stored in-memory (single-server) | 2026-05-02 | Redis pub/sub needed for multi-instance but deferred until PD-4 resolved |
 
 ---
 
@@ -208,6 +229,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.8.0 | 2026-05-02 | Milestone 5 complete — WebSocket server, proximity open/off, match card appear/expire, Haversine filter |
 | 0.7.0 | 2026-05-01 | Milestone 4 complete — matching microservice, embeddings, FAISS similarity, match pools, HNSW index |
 | 0.6.0 | 2026-05-01 | Milestone 3 complete — profile PATCH/DELETE/export, home base cooldown, matching reindex fire-and-forget |
 | 0.5.0 | 2026-05-01 | Milestone 2 complete — register, login, logout, JWT middleware, nullable onboarding fields migration |

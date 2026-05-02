@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance } from 'fastify'
 import fastifyJwt from '@fastify/jwt'
+import fastifyWebSocket from '@fastify/websocket'
 
 import usersRoutes from './routes/users'
 import proximityRoutes from './routes/proximity'
@@ -8,6 +9,7 @@ import introsRoutes from './routes/intros'
 import reportsRoutes from './routes/reports'
 import blocksRoutes from './routes/blocks'
 import venuesRoutes from './routes/venues'
+import { registerWebSocket } from './websocket'
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -17,11 +19,12 @@ export function buildApp(): FastifyInstance {
   const jwtSecret = process.env.JWT_SECRET
   if (!jwtSecret) throw new Error('JWT_SECRET environment variable is required')
 
-  // JWT plugin — decorates app.jwt and req.jwtVerify() on all routes
   app.register(fastifyJwt, {
     secret: jwtSecret,
     sign: { expiresIn: '24h' },
   })
+
+  app.register(fastifyWebSocket)
 
   app.get('/health', async () => ({ status: 'ok' }))
 
@@ -32,6 +35,9 @@ export function buildApp(): FastifyInstance {
   app.register(reportsRoutes, { prefix: '/reports' })
   app.register(blocksRoutes, { prefix: '/blocks' })
   app.register(venuesRoutes, { prefix: '/venues' })
+
+  // WebSocket endpoint — must be registered after fastifyWebSocket plugin
+  registerWebSocket(app)
 
   return app
 }
