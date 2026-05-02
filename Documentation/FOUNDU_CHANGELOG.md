@@ -21,6 +21,34 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.3.0] — 2026-05-01 — Milestone 0 Complete
+
+### added
+- `backend/` — Fastify 5 + TypeScript strict scaffold. All directories and files in place per spec file structure. `GET /health` returns `{"status":"ok"}`. TypeScript compiles with zero errors.
+  - `server.ts`, `app.ts`, `websocket.ts`
+  - `middleware/auth.ts` — stub (implemented Milestone 2)
+  - `routes/` — 7 route files, all stubs (users, proximity, signals, intros, reports, blocks, venues)
+  - `services/` — 6 service files, all stubs (auth, proximity, signal, safety, notification, venue)
+  - `types/fastify.d.ts` — `@fastify/jwt` module augmentation for `req.user.user_id`
+  - `prisma/schema.prisma` — datasource + generator only (models added Milestone 1)
+  - `package.json` — Fastify 5, `@fastify/jwt` 10, `@fastify/websocket` 11, Prisma 6, TypeScript 5 strict
+  - `tsconfig.json` — strict mode, ES2022, CommonJS output
+- `matching_service/` — FastAPI skeleton. `GET /health` returns `{"status":"ok"}`.
+  - `main.py`, `models.py`, `embedding.py`, `similarity.py`, `spotify.py` — all stubs
+  - `requirements.txt` — fastapi, uvicorn, sentence-transformers, faiss-cpu, psycopg2
+- `.env.example` — all required environment variables documented with descriptions
+- `README.md` — full local setup instructions for all three services; milestone progress table
+
+### fixed
+- Upgraded `@fastify/jwt` from `^9` to `^10` to resolve critical `fast-jwt` vulnerability (GHSA-rp9m-7r4c-75qg and related). Zero vulnerabilities on `npm audit`.
+
+### decision
+- ADR-003: `@fastify/jwt` v10 used instead of v9 (breaking change from v9, but v9 had critical JWT security vulnerabilities in `fast-jwt ≤6.2.0`). v10 is fully compatible with Fastify 5.
+- ADR-004: `tsx` used as the TypeScript runtime for development (`npm run dev`) instead of `ts-node`. Faster cold starts, no separate compilation step needed during development.
+- ADR-005: Mobile scaffold (`npx react-native@0.84 init mobile`) deferred to manual setup step. Running it programmatically would require Xcode/CocoaPods to be present and verified — documented in README instead.
+
+---
+
 ## [0.2.0] — 2026-05-01 — Implementation Plan
 
 ### added
@@ -74,6 +102,9 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 |---|---|---|---|
 | ADR-001 | Placeholder TBD values assigned — see table above | 2026-05-01 | Allows development to proceed without blocking on unresolved product decisions |
 | ADR-002 | Strict milestone dependency order adopted | 2026-05-01 | Prevents building on unstable foundations; each milestone has defined exit criteria before the next begins |
+| ADR-003 | `@fastify/jwt` v10 instead of v9 | 2026-05-01 | v9 depended on `fast-jwt ≤6.2.0` which had critical JWT security vulnerabilities; v10 resolves them and is compatible with Fastify 5 |
+| ADR-004 | `tsx` as TypeScript dev runtime instead of `ts-node` | 2026-05-01 | Faster cold starts, no separate compilation step during development |
+| ADR-005 | Mobile React Native init deferred to manual step | 2026-05-01 | Requires Xcode/CocoaPods environment to be present; documented in README instead of automated |
 
 ---
 
@@ -81,5 +112,6 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.3.0 | 2026-05-01 | Milestone 0 complete — backend and matching service scaffold, verified boot |
 | 0.2.0 | 2026-05-01 | Implementation plan created — full milestone sequence through launch |
 | 0.1.0 | 2026-05-01 | Project initialization — context and changelog files created |
