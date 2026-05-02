@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify'
 import { authenticate } from '../middleware/auth'
 import { registerUser, loginUser, type RegisterInput, type LoginInput } from '../services/authService'
+import { updateUser, deleteUser, exportUser, type UpdateUserInput } from '../services/profileService'
 
 const usersRoutes: FastifyPluginAsync = async (app) => {
   // ── Unprotected ────────────────────────────────────────────────────────────
@@ -49,30 +50,61 @@ const usersRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ message: 'Logged out successfully' })
   })
 
-  // Milestone 3 — profile update
-  app.patch<{ Params: { id: string } }>(
+  app.patch<{ Params: { id: string }; Body: UpdateUserInput }>(
     '/:id',
     { preHandler: authenticate },
-    async (_req, reply) => {
-      return reply.status(501).send({ error: 'Not implemented — coming in Milestone 3' })
+    async (req, reply) => {
+      const targetId = parseInt(req.params.id, 10)
+      if (req.user.user_id !== targetId) {
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+
+      try {
+        const user = await updateUser(targetId, req.body ?? {})
+        return reply.send({ user })
+      } catch (err: unknown) {
+        const e = err as Error & { statusCode?: number }
+        return reply.status(e.statusCode ?? 500).send({ error: e.message })
+      }
     },
   )
 
-  // Milestone 3 — account deletion
   app.delete<{ Params: { id: string } }>(
     '/:id',
     { preHandler: authenticate },
-    async (_req, reply) => {
-      return reply.status(501).send({ error: 'Not implemented — coming in Milestone 3' })
+    async (req, reply) => {
+      const targetId = parseInt(req.params.id, 10)
+      if (req.user.user_id !== targetId) {
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+
+      try {
+        await deleteUser(targetId)
+        return reply.status(204).send()
+      } catch (err: unknown) {
+        const e = err as Error & { statusCode?: number }
+        return reply.status(e.statusCode ?? 500).send({ error: e.message })
+      }
     },
   )
 
-  // Milestone 3 — data export (NFR-5.5)
+  // Data export per NFR-5.5
   app.get<{ Params: { id: string } }>(
     '/:id/export',
     { preHandler: authenticate },
-    async (_req, reply) => {
-      return reply.status(501).send({ error: 'Not implemented — coming in Milestone 3' })
+    async (req, reply) => {
+      const targetId = parseInt(req.params.id, 10)
+      if (req.user.user_id !== targetId) {
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+
+      try {
+        const data = await exportUser(targetId)
+        return reply.send({ data })
+      } catch (err: unknown) {
+        const e = err as Error & { statusCode?: number }
+        return reply.status(e.statusCode ?? 500).send({ error: e.message })
+      }
     },
   )
 }

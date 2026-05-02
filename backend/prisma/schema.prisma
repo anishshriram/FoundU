@@ -109,6 +109,8 @@ model User {
   age_range_max        Int?
   home_base_latitude   Decimal?        @db.Decimal(9, 6)
   home_base_longitude  Decimal?        @db.Decimal(9, 6)
+  // TODO: TBD — confirm 30-day limit before launch (A-3.5)
+  home_base_updated_at DateTime?
   // TODO: TBD — confirm embedding dimension before Milestone 4
   // Placeholder: 384 dimensions (all-MiniLM-L6-v2). Read Section 11 before changing.
   // Written by matching microservice via psycopg2 — not via Prisma Client.

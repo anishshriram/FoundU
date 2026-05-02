@@ -21,6 +21,28 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.6.0] — 2026-05-01 — Milestone 3 Complete
+
+### added
+- `backend/services/profileService.ts` — profile CRUD service layer
+  - `updateUser`: partial update of all profile fields; home base enforced max once per 30 days (429 with days-remaining message if violated); fires-and-forgets POST to `MATCHING_SERVICE_URL/reindex` after any update (logs failure, never blocks response)
+  - `deleteUser`: hard delete — FK cascades remove all user-owned rows across all tables
+  - `exportUser`: returns all user fields (no `password_hash`) plus all related records (signals, intros, reports, blocks, bevents) per NFR-5.5
+- `backend/prisma/schema.prisma` — added `home_base_updated_at DateTime?` to `User` model for home base cooldown tracking
+- `backend/prisma/migrations/20260502023631_add_home_base_updated_at/migration.sql` — migration applied
+
+### changed
+- `backend/routes/users.ts` — replaced three 501 stubs with full implementations:
+  - `PATCH /:id` — ownership enforced (403 if JWT `user_id` ≠ path `id`); delegates to `updateUser`
+  - `DELETE /:id` — ownership enforced; delegates to `deleteUser`; returns 204
+  - `GET /:id/export` — ownership enforced; delegates to `exportUser`
+
+### decision
+- ADR-010: Hard delete chosen for account deletion. Schema FKs already use `CASCADE`/`SET NULL` to handle all related records cleanly. Immediate deletion satisfies NFR-5.4 (must complete within 30 days).
+- ADR-011: `home_base_updated_at` column added to `users` table to enforce the 30-day home base update cooldown (A-3.5 placeholder). Checked on every PATCH that touches lat/lon; set to `now()` on success.
+
+---
+
 ## [0.5.0] — 2026-05-01 — Milestone 2 Complete
 
 ### added
@@ -155,6 +177,8 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-007 | pgvector index deferred to Milestone 4 | 2026-05-01 | HNSW/IVFFlat index not needed until matching service is implemented; will be added as manual migration |
 | ADR-008 | PostgreSQL upgraded from 14 to 16 | 2026-05-01 | Matches spec requirement; Postgres 14 pg_config had stale MacOSX14 SDK reference causing pgvector build failure |
 | ADR-009 | Onboarding fields nullable in `users` table | 2026-05-01 | Registration collects only name/email/phone/password; remaining profile fields set during post-registration onboarding via `PATCH /users/{id}` |
+| ADR-010 | Hard delete for account deletion | 2026-05-01 | FK cascades handle all related rows; immediate deletion satisfies NFR-5.4 (30-day completion requirement) |
+| ADR-011 | `home_base_updated_at` column tracks home base cooldown | 2026-05-01 | Needed to enforce the 30-day update limit (A-3.5 placeholder); set on every successful home base write |
 
 ---
 
@@ -162,6 +186,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.6.0 | 2026-05-01 | Milestone 3 complete — profile PATCH/DELETE/export, home base cooldown, matching reindex fire-and-forget |
 | 0.5.0 | 2026-05-01 | Milestone 2 complete — register, login, logout, JWT middleware, nullable onboarding fields migration |
 | 0.4.0 | 2026-05-01 | Milestone 1 complete — full Prisma schema, migration applied, 10 prompts seeded |
 | 0.3.0 | 2026-05-01 | Milestone 0 complete — backend and matching service scaffold, verified boot |
