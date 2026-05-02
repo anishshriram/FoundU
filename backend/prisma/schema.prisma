@@ -40,11 +40,6 @@ enum IntroStatus {
   expired
 }
 
-enum ContactType {
-  instagram
-  phone_number
-}
-
 enum VenueCategory {
   bar
   party
@@ -164,11 +159,11 @@ model Intro {
   signal                 Signal      @relation(fields: [signal_id], references: [id], onDelete: Cascade)
   initiator_id           Int?
   initiator              User?       @relation("IntroInitiator", fields: [initiator_id], references: [id], onDelete: Cascade)
-  sender_contact_type    ContactType?
-  // Contact values are deleted from this record immediately after mutual tap delivery (FR-6.x)
-  sender_contact_value   String?
-  receiver_contact_type  ContactType?
-  receiver_contact_value String?
+  // phone_number required; instagram optional (skippable). Both cleared immediately after mutual delivery (FR-6.x)
+  sender_phone_number    String?
+  sender_instagram       String?
+  receiver_phone_number  String?
+  receiver_instagram     String?
   status                 IntroStatus @default(dormant)
   created_at             DateTime    @default(now())
   expires_at             DateTime

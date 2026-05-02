@@ -21,6 +21,26 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.9.0] — 2026-05-02 — Milestone 6 Complete
+
+### added
+- `backend/services/signalService.ts` — full Signal/Intro lifecycle:
+  - `sendSignal`: validates receiver in match pool; enforces one-signal-per-pair; detects mutual (reverse pending signal exists) → transitions both to `mutual`, creates dormant 24hr Intro, pushes `mutual_signal` WS event to both simultaneously with Ice Breaker payload
+  - `getSignal`: ownership enforced; marks `sender_viewed_icebreaker` / `receiver_viewed_icebreaker` on read; returns other user's Ice Breaker when mutual
+  - `getIntro`: ownership enforced; exposes `you_tapped` without revealing other side's tap status
+  - `tapIntro`: phone_number required, instagram optional; first tap → `pending`; mutual tap → delivers both contacts simultaneously via response + WS push, then immediately nulls all four contact columns (FR-6.x)
+- `backend/routes/signals.ts` — `POST /signals`, `GET /signals/:id`
+- `backend/routes/intros.ts` — `GET /intros/:id`, `POST /intros/:id/tap`
+
+### changed
+- `backend/prisma/schema.prisma` — `Intro` model: replaced `sender_contact_type/value` + `receiver_contact_type/value` with `sender_phone_number`, `sender_instagram`, `receiver_phone_number`, `receiver_instagram`; removed `ContactType` enum (no longer needed)
+- `backend/prisma/migrations/20260502172642_.../migration.sql` — drops old contact columns + enum, adds new explicit columns
+
+### decision
+- ADR-015: `ContactType` enum removed; contact fields made explicit (`phone_number` required, `instagram` optional/nullable). Simpler than a generic type+value pair and enforces the product rule at the schema level.
+
+---
+
 ## [0.8.0] — 2026-05-02 — Milestone 5 Complete
 
 ### added
@@ -222,6 +242,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-012 | Match pools stored in PostgreSQL `match_pools` (JSONB) | 2026-05-01 | Avoids Redis dependency (PD-4 open); proximity service reads via GET /match-pool/{user_id} |
 | ADR-013 | `all-MiniLM-L6-v2` confirmed as embedding model (384-dim) | 2026-05-01 | Matches schema placeholder; dimension locked, no migration needed |
 | ADR-014 | WS connections and GPS coords stored in-memory (single-server) | 2026-05-02 | Redis pub/sub needed for multi-instance but deferred until PD-4 resolved |
+| ADR-015 | Intro contact fields explicit (phone_number + instagram) | 2026-05-02 | Enforces phone required / instagram optional at schema level; simpler than generic ContactType enum |
 
 ---
 
@@ -229,6 +250,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.9.0 | 2026-05-02 | Milestone 6 complete — Signal lifecycle, mutual match, Ice Breaker, Warm Intro, contact exchange |
 | 0.8.0 | 2026-05-02 | Milestone 5 complete — WebSocket server, proximity open/off, match card appear/expire, Haversine filter |
 | 0.7.0 | 2026-05-01 | Milestone 4 complete — matching microservice, embeddings, FAISS similarity, match pools, HNSW index |
 | 0.6.0 | 2026-05-01 | Milestone 3 complete — profile PATCH/DELETE/export, home base cooldown, matching reindex fire-and-forget |
