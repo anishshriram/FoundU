@@ -21,6 +21,29 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.5.0] — 2026-05-01 — Milestone 2 Complete
+
+### added
+- `backend/services/authService.ts` — `registerUser` and `loginUser` implementations
+  - `registerUser`: validates Rutgers email domain, password ≥8 chars, duplicate email/phone (409); bcrypt hash (12 rounds); creates user with `behavioral_score: 100`, `account_standing: active`, `is_open: false`
+  - `loginUser`: finds user by email (401 on missing — same message as wrong password to prevent enumeration); 403 on banned; bcrypt verify
+  - SMS verification stubbed: `// TODO: TBD — C-4.4. Stub until provider selected (PD-3)`
+- `backend/middleware/auth.ts` — `authenticate` preHandler: calls `req.jwtVerify()`, distinguishes expired token (TTL error) from missing/invalid token, both 401 with context-specific messages
+- `backend/routes/users.ts` — full auth routes:
+  - `POST /users/register` — unprotected; validates required fields; calls `registerUser`; signs JWT; returns 201 `{ token, user }`
+  - `POST /users/login` — unprotected; signs JWT; returns 200 `{ token, user }`
+  - `POST /users/logout` — protected via `authenticate`; stateless (client deletes token from Keychain); 200
+  - `PATCH /users/:id`, `DELETE /users/:id`, `GET /users/:id/export` — protected stubs, 501 (Milestone 3)
+- `backend/prisma/migrations/20260502022946_make_onboarding_fields_nullable/migration.sql` — makes 6 onboarding fields nullable: `photo_url`, `age`, `gender_identity`, `gender_preference`, `age_range_min`, `age_range_max`
+
+### fixed
+- `backend/prisma/migrations/20260502015944_init_schema/migration.sql` — prepended `CREATE EXTENSION IF NOT EXISTS vector;` so Prisma's shadow database can replay migrations without `type "vector" does not exist` error
+
+### decision
+- ADR-009: Six onboarding fields (`photo_url`, `age`, `gender_identity`, `gender_preference`, `age_range_min`, `age_range_max`) made nullable in `users` table. Registration only collects name/email/phone/password; profile fields are set via `PATCH /users/{id}` during the post-registration onboarding flow.
+
+---
+
 ## [0.4.0] — 2026-05-01 — Milestone 1 Complete
 
 ### added
@@ -131,6 +154,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-006 | `embedding_vector` uses `Unsupported("vector(384)")` | 2026-05-01 | Renders as native pgvector type; dimension 384 is placeholder for all-MiniLM-L6-v2, confirm before Milestone 4 |
 | ADR-007 | pgvector index deferred to Milestone 4 | 2026-05-01 | HNSW/IVFFlat index not needed until matching service is implemented; will be added as manual migration |
 | ADR-008 | PostgreSQL upgraded from 14 to 16 | 2026-05-01 | Matches spec requirement; Postgres 14 pg_config had stale MacOSX14 SDK reference causing pgvector build failure |
+| ADR-009 | Onboarding fields nullable in `users` table | 2026-05-01 | Registration collects only name/email/phone/password; remaining profile fields set during post-registration onboarding via `PATCH /users/{id}` |
 
 ---
 
@@ -138,6 +162,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.5.0 | 2026-05-01 | Milestone 2 complete — register, login, logout, JWT middleware, nullable onboarding fields migration |
 | 0.4.0 | 2026-05-01 | Milestone 1 complete — full Prisma schema, migration applied, 10 prompts seeded |
 | 0.3.0 | 2026-05-01 | Milestone 0 complete — backend and matching service scaffold, verified boot |
 | 0.2.0 | 2026-05-01 | Implementation plan created — full milestone sequence through launch |

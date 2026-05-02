@@ -1,3 +1,6 @@
+-- Enable pgvector extension (required for embedding_vector column)
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- CreateEnum
 CREATE TYPE "AccountStanding" AS ENUM ('active', 'suspended', 'banned');
 

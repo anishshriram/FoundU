@@ -95,16 +95,18 @@ model User {
   email                String          @unique
   phone_number         String          @unique
   password_hash        String
-  photo_url            String
+  // Set during OnboardingPhoto — null until onboarding completes
+  photo_url            String?
   prompt_id            Int?
   prompt               Prompt?         @relation(fields: [prompt_id], references: [id])
   prompt_answer        String?
-  age                  Int
-  gender_identity      String
+  // Fields below are null at registration; filled via PATCH /users/{id} during onboarding
+  age                  Int?
+  gender_identity      String?
   preferences          Json?
-  gender_preference    String
-  age_range_min        Int
-  age_range_max        Int
+  gender_preference    String?
+  age_range_min        Int?
+  age_range_max        Int?
   home_base_latitude   Decimal?        @db.Decimal(9, 6)
   home_base_longitude  Decimal?        @db.Decimal(9, 6)
   // TODO: TBD — confirm embedding dimension before Milestone 4
