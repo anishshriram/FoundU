@@ -1,0 +1,15 @@
+// FoundU Prisma Schema
+// Source of truth for all database structure — never write raw SQL.
+// Run `npx prisma migrate dev` to apply changes.
+// Run `npx prisma generate` to regenerate the Prisma Client.
+//
+// Full schema (all 8 models) implemented in Milestone 1.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
