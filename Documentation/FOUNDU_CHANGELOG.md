@@ -21,6 +21,29 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.4.0] — 2026-05-01 — Milestone 1 Complete
+
+### added
+- `backend/prisma/schema.prisma` — full schema: 8 enums, 8 models, all fields, constraints, foreign keys, and defaults matching spec Section 7
+  - `User` — all fields including `embedding_vector vector(384)` via pgvector `Unsupported` type; indexes `idx_users_gender_preference` and `idx_users_age_range`
+  - `Signal` — sender/receiver FKs with cascade delete, status enum, Ice Breaker viewed flags
+  - `Intro` — 1:1 with Signal (`signal_id @unique`); contact fields present but deleted on mutual tap delivery
+  - `Prompt`, `Venue`, `Report`, `Block`, `BEvent` — all fields per spec; BEvent FK references use `onDelete: SetNull` to preserve audit trail
+- `backend/prisma/migrations/20260502015944_init_schema/migration.sql` — initial migration applied to local `foundu` database; all 8 tables verified in PostgreSQL 16
+- `backend/prisma/seed.ts` — seeds 10 placeholder Ice Breaker prompts; idempotent (skips if prompts already exist)
+- `backend/.env` — local dev env vars; `DATABASE_URL` points to local `foundu` database
+- `.gitignore` — updated to explicitly exclude `backend/.env` and `matching_service/.env`
+
+### changed
+- `backend/package.json` — added `prisma.seed` config pointing to `tsx prisma/seed.ts`
+
+### decision
+- ADR-006: `embedding_vector` uses Prisma `Unsupported("vector(384)")` (renders as `vector(384)` in PostgreSQL). Dimension 384 is a placeholder for `all-MiniLM-L6-v2`. Confirm before Milestone 4. The Python matching service writes this field via psycopg2 directly; Prisma Client does not interact with it.
+- ADR-007: pgvector HNSW/IVFFlat index on `embedding_vector` intentionally omitted from this migration — not needed until Milestone 4 (Matching). Will be added as a manual migration step in Milestone 4.
+- ADR-008: Postgres 16.13 adopted locally (upgraded from 14) to match spec requirement (C-2.x) and avoid SDK build failures. pgvector 0.8.0 built from source and installed.
+
+---
+
 ## [0.3.0] — 2026-05-01 — Milestone 0 Complete
 
 ### added
@@ -105,6 +128,9 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-003 | `@fastify/jwt` v10 instead of v9 | 2026-05-01 | v9 depended on `fast-jwt ≤6.2.0` which had critical JWT security vulnerabilities; v10 resolves them and is compatible with Fastify 5 |
 | ADR-004 | `tsx` as TypeScript dev runtime instead of `ts-node` | 2026-05-01 | Faster cold starts, no separate compilation step during development |
 | ADR-005 | Mobile React Native init deferred to manual step | 2026-05-01 | Requires Xcode/CocoaPods environment to be present; documented in README instead of automated |
+| ADR-006 | `embedding_vector` uses `Unsupported("vector(384)")` | 2026-05-01 | Renders as native pgvector type; dimension 384 is placeholder for all-MiniLM-L6-v2, confirm before Milestone 4 |
+| ADR-007 | pgvector index deferred to Milestone 4 | 2026-05-01 | HNSW/IVFFlat index not needed until matching service is implemented; will be added as manual migration |
+| ADR-008 | PostgreSQL upgraded from 14 to 16 | 2026-05-01 | Matches spec requirement; Postgres 14 pg_config had stale MacOSX14 SDK reference causing pgvector build failure |
 
 ---
 
@@ -112,6 +138,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.4.0 | 2026-05-01 | Milestone 1 complete — full Prisma schema, migration applied, 10 prompts seeded |
 | 0.3.0 | 2026-05-01 | Milestone 0 complete — backend and matching service scaffold, verified boot |
 | 0.2.0 | 2026-05-01 | Implementation plan created — full milestone sequence through launch |
 | 0.1.0 | 2026-05-01 | Project initialization — context and changelog files created |

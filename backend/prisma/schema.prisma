@@ -1,9 +1,12 @@
 // FoundU Prisma Schema
 // Source of truth for all database structure — never write raw SQL.
-// Run `npx prisma migrate dev` to apply changes.
-// Run `npx prisma generate` to regenerate the Prisma Client.
+// Read Section 7 of the spec before making any changes to this file.
 //
-// Full schema (all 8 models) implemented in Milestone 1.
+// Commands:
+//   npx prisma migrate dev     — apply schema changes and generate client
+//   npx prisma generate        — regenerate client without migrating
+//   npx prisma db seed         — seed initial data (prompts table)
+//   npx prisma studio          — open browser-based DB explorer
 
 generator client {
   provider = "prisma-client-js"
@@ -12,4 +15,228 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AccountStanding {
+  active
+  suspended
+  banned
+}
+
+enum SignalStatus {
+  pending
+  mutual
+  expired
+}
+
+enum IntroStatus {
+  dormant
+  pending
+  mutual
+  expired
+}
+
+enum ContactType {
+  instagram
+  phone_number
+}
+
+enum VenueCategory {
+  bar
+  party
+  library
+  campus_space
+  restaurant
+  other
+}
+
+enum VenueSource {
+  google_places
+  foursquare
+}
+
+enum ReportReason {
+  inappropriate_behavior
+  harassment
+  fake_profile
+  spam
+  other
+}
+
+enum BEventType {
+  report_received
+  block_received
+  screenshot_detected
+  multiple_accounts_detected
+  passive_recovery
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Prompt {
+  id          Int     @id @default(autoincrement())
+  prompt_text String
+  is_active   Boolean @default(true)
+
+  users User[]
+
+  @@map("prompts")
+}
+
+model User {
+  id                   Int             @id @default(autoincrement())
+  name                 String
+  email                String          @unique
+  phone_number         String          @unique
+  password_hash        String
+  photo_url            String
+  prompt_id            Int?
+  prompt               Prompt?         @relation(fields: [prompt_id], references: [id])
+  prompt_answer        String?
+  age                  Int
+  gender_identity      String
+  preferences          Json?
+  gender_preference    String
+  age_range_min        Int
+  age_range_max        Int
+  home_base_latitude   Decimal?        @db.Decimal(9, 6)
+  home_base_longitude  Decimal?        @db.Decimal(9, 6)
+  // TODO: TBD — confirm embedding dimension before Milestone 4
+  // Placeholder: 384 dimensions (all-MiniLM-L6-v2). Read Section 11 before changing.
+  // Written by matching microservice via psycopg2 — not via Prisma Client.
+  embedding_vector     Unsupported("vector(384)")?
+  embedding_updated_at DateTime?
+  is_open              Boolean         @default(false)
+  behavioral_score     Int             @default(100)
+  account_standing     AccountStanding @default(active)
+  created_at           DateTime        @default(now())
+  last_active_at       DateTime?
+
+  signals_sent      Signal[] @relation("SignalSender")
+  signals_received  Signal[] @relation("SignalReceiver")
+  intros_initiated  Intro[]  @relation("IntroInitiator")
+  reports_filed     Report[] @relation("ReportReporter")
+  reports_received  Report[] @relation("ReportReported")
+  blocks_created    Block[]  @relation("BlockBlocker")
+  blocks_received   Block[]  @relation("BlockBlocked")
+  bevents           BEvent[] @relation("BEventUser")
+  bevents_triggered BEvent[] @relation("BEventTriggeredBy")
+
+  @@index([gender_preference], name: "idx_users_gender_preference")
+  @@index([age_range_min, age_range_max], name: "idx_users_age_range")
+  @@map("users")
+}
+
+model Signal {
+  id                         Int          @id @default(autoincrement())
+  sender_id                  Int
+  sender                     User         @relation("SignalSender", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver_id                Int
+  receiver                   User         @relation("SignalReceiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+  status                     SignalStatus @default(pending)
+  sender_viewed_icebreaker   Boolean      @default(false)
+  receiver_viewed_icebreaker Boolean      @default(false)
+  created_at                 DateTime     @default(now())
+  expires_at                 DateTime
+  mutually_matched_at        DateTime?
+
+  // 1:1 — UNIQUE on intro.signal_id enforced at DB level
+  intro   Intro?
+  reports Report[]
+
+  @@map("signals")
+}
+
+model Intro {
+  id                     Int         @id @default(autoincrement())
+  signal_id              Int         @unique
+  signal                 Signal      @relation(fields: [signal_id], references: [id], onDelete: Cascade)
+  initiator_id           Int?
+  initiator              User?       @relation("IntroInitiator", fields: [initiator_id], references: [id], onDelete: Cascade)
+  sender_contact_type    ContactType?
+  // Contact values are deleted from this record immediately after mutual tap delivery (FR-6.x)
+  sender_contact_value   String?
+  receiver_contact_type  ContactType?
+  receiver_contact_value String?
+  status                 IntroStatus @default(dormant)
+  created_at             DateTime    @default(now())
+  expires_at             DateTime
+  completed_at           DateTime?
+
+  reports Report[]
+
+  @@map("intros")
+}
+
+model Venue {
+  id          Int           @id @default(autoincrement())
+  name        String
+  category    VenueCategory
+  latitude    Decimal       @db.Decimal(9, 6)
+  longitude   Decimal       @db.Decimal(9, 6)
+  address     String
+  source      VenueSource
+  external_id String?
+  is_active   Boolean       @default(true)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+
+  @@map("venues")
+}
+
+model Report {
+  id            Int          @id @default(autoincrement())
+  reporter_id   Int
+  reporter      User         @relation("ReportReporter", fields: [reporter_id], references: [id], onDelete: Cascade)
+  reported_id   Int
+  reported      User         @relation("ReportReported", fields: [reported_id], references: [id], onDelete: Cascade)
+  signal_id     Int?
+  signal        Signal?      @relation(fields: [signal_id], references: [id], onDelete: SetNull)
+  warm_intro_id Int?
+  intro         Intro?       @relation(fields: [warm_intro_id], references: [id], onDelete: SetNull)
+  reason        ReportReason
+  reason_detail String?
+  created_at    DateTime     @default(now())
+
+  bevents BEvent[]
+
+  @@map("reports")
+}
+
+model Block {
+  id         Int      @id @default(autoincrement())
+  blocker_id Int
+  blocker    User     @relation("BlockBlocker", fields: [blocker_id], references: [id], onDelete: Cascade)
+  blocked_id Int
+  blocked    User     @relation("BlockBlocked", fields: [blocked_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+
+  bevents BEvent[]
+
+  @@unique([blocker_id, blocked_id])
+  @@map("blocks")
+}
+
+model BEvent {
+  id              Int        @id @default(autoincrement())
+  user_id         Int
+  user            User       @relation("BEventUser", fields: [user_id], references: [id], onDelete: Cascade)
+  event_type      BEventType
+  score_delta     Int
+  triggered_by_id Int?
+  // ON DELETE SET NULL — preserves audit trail when the triggering user is deleted
+  triggered_by    User?      @relation("BEventTriggeredBy", fields: [triggered_by_id], references: [id], onDelete: SetNull)
+  report_id       Int?
+  report          Report?    @relation(fields: [report_id], references: [id], onDelete: SetNull)
+  block_id        Int?
+  block           Block?     @relation(fields: [block_id], references: [id], onDelete: SetNull)
+  created_at      DateTime   @default(now())
+
+  @@map("bevents")
 }
