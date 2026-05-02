@@ -1,18 +1,25 @@
 import base64
 import logging
 import os
+import time
 from typing import Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
+# NOTE: Spotify ToS prohibits using their content to train ML/AI models.
+# Spotify enrichment is used here for profile matching similarity only.
+# Confirm compliance with Spotify ToS before launch.
+
 _token_cache: Optional[str] = None
+_token_expiry: float = 0.0  # Unix timestamp; 0 means expired/unset
 
 
 async def _get_token(client: httpx.AsyncClient) -> Optional[str]:
-    global _token_cache
-    if _token_cache:
+    global _token_cache, _token_expiry
+    # Refresh 60 seconds before actual expiry to avoid edge-case 401s
+    if _token_cache and time.time() < _token_expiry - 60:
         return _token_cache
 
     client_id = os.getenv("SPOTIFY_CLIENT_ID")
@@ -29,10 +36,14 @@ async def _get_token(client: httpx.AsyncClient) -> Optional[str]:
             timeout=10.0,
         )
         resp.raise_for_status()
-        _token_cache = resp.json()["access_token"]
+        payload = resp.json()
+        _token_cache = payload["access_token"]
+        _token_expiry = time.time() + payload.get("expires_in", 3600)
         return _token_cache
     except Exception as exc:
         logger.warning("Spotify token fetch failed: %s", exc)
+        _token_cache = None
+        _token_expiry = 0.0
         return None
 
 
