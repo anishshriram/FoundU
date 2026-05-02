@@ -21,6 +21,24 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.10.0] — 2026-05-02 — Milestone 7 Complete
+
+### added
+- `backend/services/safetyService.ts` — full safety layer:
+  - `submitReport`: creates Report + auto-Block + BEvent; applies `-15` score delta; checks suspension (≤-50) and ban (≤-100) thresholds; forces suspended/banned user off via `goOff`
+  - `blockUser`: creates Block + BEvent (`-5` delta); forces blocked user off
+  - `recordScreenshot`: creates BEvent (`-20` delta); checks thresholds
+  - `applyScoreDelta`: shared threshold logic — suspended/banned accounts are never auto-restored by positive deltas
+  - `startPassiveRecovery`: `setTimeout`-based background job; runs every 24hrs; increments `behavioral_score` by `+2` for all `active` users below 100; first run deferred by one interval to avoid firing on every dev restart
+- `backend/routes/reports.ts` — `POST /reports`, `GET /reports`, `POST /reports/screenshot`
+- `backend/routes/blocks.ts` — `POST /blocks`, `GET /blocks`
+- `backend/server.ts` — calls `startPassiveRecovery()` after server starts listening
+
+### decision
+- ADR-016: Passive recovery job uses `setTimeout` recursion (not `setInterval` or a cron) so late runs don't stack if the DB is slow. First run deferred one full interval to avoid firing on dev server restarts.
+
+---
+
 ## [0.9.0] — 2026-05-02 — Milestone 6 Complete
 
 ### added
@@ -243,6 +261,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-013 | `all-MiniLM-L6-v2` confirmed as embedding model (384-dim) | 2026-05-01 | Matches schema placeholder; dimension locked, no migration needed |
 | ADR-014 | WS connections and GPS coords stored in-memory (single-server) | 2026-05-02 | Redis pub/sub needed for multi-instance but deferred until PD-4 resolved |
 | ADR-015 | Intro contact fields explicit (phone_number + instagram) | 2026-05-02 | Enforces phone required / instagram optional at schema level; simpler than generic ContactType enum |
+| ADR-016 | Passive recovery uses recursive setTimeout, not setInterval | 2026-05-02 | Prevents job stacking if DB is slow; first run deferred one interval to avoid firing on dev restarts |
 
 ---
 
@@ -250,6 +269,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.10.0 | 2026-05-02 | Milestone 7 complete — reports, blocks, behavioral scoring, suspension/ban thresholds, passive recovery |
 | 0.9.0 | 2026-05-02 | Milestone 6 complete — Signal lifecycle, mutual match, Ice Breaker, Warm Intro, contact exchange |
 | 0.8.0 | 2026-05-02 | Milestone 5 complete — WebSocket server, proximity open/off, match card appear/expire, Haversine filter |
 | 0.7.0 | 2026-05-01 | Milestone 4 complete — matching microservice, embeddings, FAISS similarity, match pools, HNSW index |
