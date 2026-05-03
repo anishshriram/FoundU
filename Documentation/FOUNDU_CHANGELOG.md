@@ -21,6 +21,25 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 ---
 
+## [0.11.0] — 2026-05-02 — Milestone 8 Complete
+
+### added
+- `backend/services/notificationService.ts` — APNs push service via Node.js built-in `http2` + `jose` (ES256 JWT signing); six notification types: `notifyMatchCardAppear`, `notifyMutualSignal`, `notifyWarmIntroTapReceived`, `notifyWarmIntroCompleted`, `notifyWarmIntroExpiring`, `notifyReportReceived`; provider token cached 55 min (APNs tokens expire at 60); graceful no-op when any credential is absent; failures logged only — never propagated to caller
+- `backend/prisma/schema.prisma` — added `apns_device_token String?` to `User`; updated via `PATCH /users/:id`; excluded from all API responses (device credential, not profile data)
+- `backend/prisma/migrations/20260503034733_add_apns_device_token/migration.sql` — migration applied
+
+### changed
+- `backend/services/proximityService.ts` — fires `notifyMatchCardAppear` to both users on card appear
+- `backend/services/signalService.ts` — fires `notifyMutualSignal` to both on mutual match; schedules `notifyWarmIntroExpiring` 4hrs before Intro expiry; fires `notifyWarmIntroTapReceived` + `notifyWarmIntroCompleted` on mutual tap
+- `backend/services/safetyService.ts` — fires `notifyReportReceived` to reporter after report submitted
+- `backend/services/profileService.ts` — `UpdateUserInput` accepts `apns_device_token`
+- `backend/package.json` — replaced `apns2` (had fast-jwt critical CVE) with `jose` for ES256 JWT signing
+
+### decision
+- ADR-017: APNs implemented using Node.js built-in `http2` + `jose` instead of `apns2` npm package. `apns2` v11.5–11.8 contained the same `fast-jwt` critical CVE (GHSA-rp9m-7r4c-75qg) we rejected in `@fastify/jwt` v9.
+
+---
+
 ## [0.10.0] — 2026-05-02 — Milestone 7 Complete
 
 ### added
@@ -262,6 +281,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 | ADR-014 | WS connections and GPS coords stored in-memory (single-server) | 2026-05-02 | Redis pub/sub needed for multi-instance but deferred until PD-4 resolved |
 | ADR-015 | Intro contact fields explicit (phone_number + instagram) | 2026-05-02 | Enforces phone required / instagram optional at schema level; simpler than generic ContactType enum |
 | ADR-016 | Passive recovery uses recursive setTimeout, not setInterval | 2026-05-02 | Prevents job stacking if DB is slow; first run deferred one interval to avoid firing on dev restarts |
+| ADR-017 | APNs via built-in http2 + jose instead of apns2 npm package | 2026-05-02 | apns2 v11.5–11.8 had fast-jwt critical CVE; jose is clean, modern, and well-maintained |
 
 ---
 
@@ -269,6 +289,7 @@ Status labels: `added` | `changed` | `fixed` | `removed` | `decision` | `tbd-res
 
 | Version | Date | Summary |
 |---|---|---|
+| 0.11.0 | 2026-05-02 | Milestone 8 complete — APNs notification service, 6 push types, device token storage, graceful no-op |
 | 0.10.0 | 2026-05-02 | Milestone 7 complete — reports, blocks, behavioral scoring, suspension/ban thresholds, passive recovery |
 | 0.9.0 | 2026-05-02 | Milestone 6 complete — Signal lifecycle, mutual match, Ice Breaker, Warm Intro, contact exchange |
 | 0.8.0 | 2026-05-02 | Milestone 5 complete — WebSocket server, proximity open/off, match card appear/expire, Haversine filter |

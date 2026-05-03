@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { send } from '../websocket'
+import { notifyMatchCardAppear } from './notificationService'
 
 const prisma = new PrismaClient()
 
@@ -141,6 +142,8 @@ async function pushCardsForUser(userId: number, lat: number, lng: number): Promi
       type: 'match_card_appear',
       user: { id: profileA.id, name: profileA.name, age: profileA.age, photo_url: profileA.photo_url },
     })
+    notifyMatchCardAppear(userId)
+    notifyMatchCardAppear(candidateId)
   }
 }
 

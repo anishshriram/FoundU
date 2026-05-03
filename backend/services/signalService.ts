@@ -1,5 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 import { send } from '../websocket'
+import {
+  notifyMutualSignal,
+  notifyWarmIntroTapReceived,
+  notifyWarmIntroCompleted,
+  notifyWarmIntroExpiring,
+} from './notificationService'
 
 const prisma = new PrismaClient()
 
@@ -146,6 +152,18 @@ export async function sendSignal(
   }
   send(senderId, { ...wsPayloadBase, their_ice_breaker: receiverIceBreaker })
   send(receiverId, { ...wsPayloadBase, their_ice_breaker: senderIceBreaker })
+  notifyMutualSignal(senderId)
+  notifyMutualSignal(receiverId)
+
+  // TODO: TBD — confirm "expiring soon" lead time before launch (currently 4hrs before expiry)
+  const expiringLeadMs = 4 * 60 * 60 * 1000
+  const expiringDelay = INTRO_EXPIRY_MS - expiringLeadMs
+  if (expiringDelay > 0) {
+    setTimeout(() => {
+      notifyWarmIntroExpiring(senderId)
+      notifyWarmIntroExpiring(receiverId)
+    }, expiringDelay)
+  }
 
   return {
     signal_id: newSignal.id,
@@ -338,6 +356,9 @@ export async function tapIntro(
   // Push to the other user via WebSocket
   const otherId = isSender ? receiver_id : sender_id
   send(otherId, { type: 'mutual_signal', intro_id: introId, their_contacts: myContacts })
+  notifyWarmIntroTapReceived(otherId)
+  notifyWarmIntroCompleted(requesterId)
+  notifyWarmIntroCompleted(otherId)
 
   return { status: 'mutual', their_contacts: theirContacts }
 }

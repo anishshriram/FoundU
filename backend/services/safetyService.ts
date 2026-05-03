@@ -1,5 +1,6 @@
 import { PrismaClient, BEventType, ReportReason } from '@prisma/client'
 import { goOff } from './proximityService'
+import { notifyReportReceived } from './notificationService'
 
 const prisma = new PrismaClient()
 
@@ -139,6 +140,8 @@ export async function submitReport(
 
   // Remove reported user from reporter's live match cards
   await goOff(input.reported_id).catch(() => {})
+
+  notifyReportReceived(reporterId)
 
   return { report_id: report.id, block_id: block.id }
 }

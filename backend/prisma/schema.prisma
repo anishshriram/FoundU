@@ -111,6 +111,8 @@ model User {
   // Written by matching microservice via psycopg2 — not via Prisma Client.
   embedding_vector     Unsupported("vector(384)")?
   embedding_updated_at DateTime?
+  // Registered by iOS after notification permission granted; updated via PATCH /users/:id
+  apns_device_token    String?
   is_open              Boolean         @default(false)
   behavioral_score     Int             @default(100)
   account_standing     AccountStanding @default(active)

@@ -19,6 +19,7 @@ export interface UpdateUserInput {
   home_base_latitude?: number
   home_base_longitude?: number
   is_open?: boolean
+  apns_device_token?: string
 }
 
 const USER_SAFE_SELECT = {
@@ -81,6 +82,7 @@ export async function updateUser(userId: number, input: UpdateUserInput) {
   if (input.prompt_id !== undefined) data.prompt = { connect: { id: input.prompt_id } }
   if (input.prompt_answer !== undefined) data.prompt_answer = input.prompt_answer
   if (input.is_open !== undefined) data.is_open = input.is_open
+  if (input.apns_device_token !== undefined) data.apns_device_token = input.apns_device_token
   if (input.home_base_latitude !== undefined)
     data.home_base_latitude = new Prisma.Decimal(input.home_base_latitude)
   if (input.home_base_longitude !== undefined)
